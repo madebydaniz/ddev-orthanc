@@ -1,4 +1,4 @@
-[![tests](https://github.com/ddev/ddev-orthanc/actions/workflows/tests.yml/badge.svg)](https://github.com/ddev/ddev-orthanc/actions/workflows/tests.yml) ![project is maintained](https://img.shields.io/maintenance/yes/2024.svg)
+[![tests](https://github.com/madebydaniz/ddev-orthanc/actions/workflows/tests.yml/badge.svg)](https://github.com/madebydaniz/ddev-orthanc/actions/workflows/tests.yml) ![project is maintained](https://img.shields.io/maintenance/yes/2024.svg)
 
 # ddev-orthanc <!-- omit in toc -->
 
