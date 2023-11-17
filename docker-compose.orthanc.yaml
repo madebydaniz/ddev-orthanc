@@ -1,15 +1,13 @@
-
+#ddev-generated
 services:
   orthanc:
     container_name: ddev-${DDEV_SITENAME}-orthanc
     hostname: ${DDEV_SITENAME}-orthanc
     image: osimis/orthanc:latest
-    ports:
-      - 4242:4242
-      - 8042:8042
+    ports: ["4242:4242", "8042:8042"]
     environment:
-      - ORTHANC__NAME=${DDEV_SITENAME}
-      - ORTHANC__REGISTERED_USERS= |
+      ORTHANC__NAME: ${DDEV_SITENAME}
+      ORTHANC__REGISTERED_USERS: |
         {"orthanc": "orthanc"}
     labels:
       com.ddev.site-name: ${DDEV_SITENAME}
