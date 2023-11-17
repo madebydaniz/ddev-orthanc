@@ -22,4 +22,33 @@ Orthanc can turn any computer running Windows, Linux or OS X into a DICOM store 
 
 This Orthanc recipe for [DDEV](https://ddev.readthedocs.io) installs a [`.ddev/docker-compose.orthanc.yaml`](docker-compose.orthanc.yaml) using the [`osimis/orthanc`](https://hub.docker.com/r/osimis/orthanc/) Docker image.
 
+## Accessing Orthanc and DICOM Services
+
+**Orthanc URL**
+
+The Orthanc server can be accessed via the following URL:
+```bash
+Orthanc URL = http://{PROJECT_URL}:8042
+```
+
+**DICOM URL**
+
+For DICOM communication, use this URL:
+
+```bash
+DICOM URL = {PROJECT_URL}:4242
+```
+
+**Testing DICOM Communication**
+
+To test the communication with the DICOM server, you can use the `dcmsend` command.
+This example demonstrates sending a DICOM directory:
+
+```bash
+echoscu {PROJECT_URL} 4242 -aec AETITLE -ll info
+dcmsend {PROJECT_URL} 4242 DIRECTORY +sd +ma --aetitle AETITLE --call AETITLE
+```
+
+Replace `{PROJECT_URL}` with your actual project URL, and `DIRECTORY` with the path to the DICOM files you want to send.
+
 **Contributed and maintained by [@madebydaniz](https://github.com/madebydaniz)**
