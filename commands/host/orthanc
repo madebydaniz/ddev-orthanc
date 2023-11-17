@@ -1,0 +1,50 @@
+#!/bin/bash
+
+## #ddev-generated: If you want to edit and own this file, remove this line.
+## Description: Launch a browser with the current orthanc service
+## Usage: launch [path] [-o|--orthanc]
+## Example: "ddev launch orthanc" or "ddev launch -o"
+
+DDEV_ORTHANC_PORT=8042
+FULLURL="http://${DDEV_SITENAME}.${DDEV_TLD}"
+
+while :; do
+     case ${1:-} in
+         -o|--orthanc)
+            if [[ ! -z "${GITPOD_INSTANCE_ID}" ]] || [[ "${CODESPACES}" == "true" ]]; then
+                FULLURL="${FULLURL/-${DDEV_HOST_WEBSERVER_PORT}/-${DDEV_ORTHANC_PORT}}"
+            else
+                FULLURL="${FULLURL%:[0-9]*}:${DDEV_ORTHANC_PORT}"
+            fi
+             ;;
+
+         --)              # End of all options.
+             shift
+             break
+             ;;
+         -?*)
+             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+             ;;
+         *)               # Default case: No more options, so break out of the loop.
+             break
+     esac
+
+     shift
+ done
+
+
+case $OSTYPE in
+  linux-gnu)
+    if [[ ! -z "${GITPOD_INSTANCE_ID}" ]]; then
+        gp preview ${FULLURL}
+    else
+        xdg-open ${FULLURL}
+    fi
+    ;;
+  "darwin"*)
+    open ${FULLURL}
+    ;;
+  "win*"* | "msys"*)
+    start ${FULLURL}
+    ;;
+esac

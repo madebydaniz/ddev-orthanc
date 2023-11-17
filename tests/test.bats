@@ -11,9 +11,6 @@ setup() {
   ddev start -y >/dev/null
 }
 
-health_checks() {
-  ddev exec "curl -s orthanc:8042" | grep "${PROJNAME}-orthanc"
-}
 
 teardown() {
   set -eu -o pipefail
@@ -27,8 +24,9 @@ teardown() {
   cd ${TESTDIR}
   echo "# ddev get ${DIR} with project ${PROJNAME} in ${TESTDIR} ($(pwd))" >&3
   ddev get ${DIR}
-  ddev restart
-  health_checks
+  ddev restart >/dev/null
+  URL=$(ddev describe -j ${PROJNAME} | jq -r .raw.services.\"orthanc\".http_url)
+  curl -s --fail ${URL}
 }
 
 @test "install from release" {
@@ -37,6 +35,7 @@ teardown() {
   echo "# ddev get ddev/ddev-orthanc with project ${PROJNAME} in ${TESTDIR} ($(pwd))" >&3
   ddev get ddev/ddev-orthanc
   ddev restart >/dev/null
-  health_checks
+  URL=$(ddev describe -j ${PROJNAME} | jq -r .raw.services.\"orthanc\".http_url)
+  curl -s --fail ${URL}
 }
 

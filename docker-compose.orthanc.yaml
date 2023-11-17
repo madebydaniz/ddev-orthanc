@@ -1,29 +1,26 @@
-#ddev-generated
-# Simple template to demonstrate addon-template
+
 services:
   orthanc:
     container_name: ddev-${DDEV_SITENAME}-orthanc
-    image: osimis/orthanc
-    networks: [default, ddev_default]
-    ports: ["104:4242", "8042:8042"]
-    restart: "no"
-
+    hostname: ${DDEV_SITENAME}-orthanc
+    image: osimis/orthanc:latest
+    ports:
+      - 4242:4242
+      - 8042:8042
     environment:
-      ORTHANC__NAME: ${DDEV_SITENAME}
-      ORTHANC__REGISTERED_USERS: |
+      - ORTHANC__NAME=${DDEV_SITENAME}
+      - ORTHANC__REGISTERED_USERS= |
         {"orthanc": "orthanc"}
-
-    # These labels ensure this service is discoverable by ddev.
     labels:
       com.ddev.site-name: ${DDEV_SITENAME}
       com.ddev.approot: $DDEV_APPROOT
-
+    restart: 'no'
     volumes:
-    - ".:/mnt/ddev_config"
-    - "orthanc-storage:/var/lib/orthanc/db:Z"
-
+      - ".:/mnt/ddev_config"
+      - "orthanc-storage:/var/lib/orthanc/db:Z"
+    networks: [default, ddev_default]
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail -s orthanc:8042"]
+      disable: true
 
 volumes:
   orthanc-storage:

@@ -4,3 +4,4 @@ name: orthanc
 
 project_files:
 - docker-compose.orthanc.yaml
+- commands/host/orthanc
