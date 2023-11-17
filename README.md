@@ -7,7 +7,7 @@
 * [Explanation](#explanation)
 
 ## What is ddev-orthanc?
-This repository allows you to quickly install Orthanc into a [DDEV](https://ddev.readthedocs.io) project using just `ddev get ddev/ddev-orthanc`.
+This repository allows you to quickly install Orthanc into a [DDEV](https://ddev.readthedocs.io) project using just `ddev get madebydaniz/ddev-orthanc`.
 
 Orthanc aims at providing a simple, yet powerful standalone DICOM server. It is designed to improve the DICOM flows in hospitals and to support research about the automated analysis of medical images. Orthanc lets its users focus on the content of the DICOM files, hiding the complexity of the DICOM format and of the DICOM protocol.
 
