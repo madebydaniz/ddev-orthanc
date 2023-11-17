@@ -15,7 +15,7 @@ Orthanc can turn any computer running Windows, Linux or OS X into a DICOM store 
 
 ## Installation
 
-1. `ddev get ddev/ddev-orthanc`
+1. `ddev get madebydaniz/ddev-orthanc`
 2. `ddev restart`
 
 ## Explanation
