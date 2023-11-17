@@ -25,17 +25,17 @@ teardown() {
   echo "# ddev get ${DIR} with project ${PROJNAME} in ${TESTDIR} ($(pwd))" >&3
   ddev get ${DIR}
   ddev restart >/dev/null
-  URL=$(ddev describe -j ${PROJNAME} | jq -r .raw.services.\"orthanc\".http_url)
-  curl -s --fail ${URL}
+  URL=$(ddev describe -j ${PROJNAME} | jq -r .raw.httpurl)
+  curl -u "orthanc:orthanc" -s --fail ${URL}:8042
 }
 
 @test "install from release" {
   set -eu -o pipefail
   cd ${TESTDIR} || ( printf "unable to cd to ${TESTDIR}\n" && exit 1 )
-  echo "# ddev get ddev/ddev-orthanc with project ${PROJNAME} in ${TESTDIR} ($(pwd))" >&3
-  ddev get ddev/ddev-orthanc
+  echo "# ddev get madebydaniz/ddev-orthanc with project ${PROJNAME} in ${TESTDIR} ($(pwd))" >&3
+  ddev get madebydaniz/ddev-orthanc
   ddev restart >/dev/null
-  URL=$(ddev describe -j ${PROJNAME} | jq -r .raw.services.\"orthanc\".http_url)
-  curl -s --fail ${URL}
+  URL=$(ddev describe -j ${PROJNAME} | jq -r .raw.httpurl)
+  curl -u "orthanc:orthanc" -s --fail ${URL}:8042
 }
 
