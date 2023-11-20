@@ -2,6 +2,27 @@
 
 name: orthanc
 
+pre_install_actions:
+  - |
+    #ddev-nodisplay
+    #ddev-description:Check DDEV version
+    if ! ( ddev debug capabilities 2>/dev/null | grep multiple-dockerfiles >/dev/null 2>&1 ) ; then
+      echo "This add-on requires DDEV v1.19.3 or higher, please upgrade." && exit 2
+    fi
+  - |
+    #ddev-nodisplay
+    #ddev-description:Pre-upgrade for older versions of add-on
+    for file in \
+      docker-compose.orthanc.yaml \
+      commands/host/orthanc; do
+        if [ -f $file ]; then
+          if ! grep "#ddev-generated" $file; then
+            echo "remove old style file $file"
+            rm $file
+          fi
+        fi
+      done
+
 project_files:
-- docker-compose.orthanc.yaml
-- commands/host/orthanc
+  - docker-compose.orthanc.yaml
+  - commands/host/orthanc
