@@ -4,7 +4,7 @@ services:
     container_name: ddev-${DDEV_SITENAME}-orthanc
     hostname: ${DDEV_SITENAME}-orthanc
     image: osimis/orthanc:latest
-    ports: ["4242:4242", "8042:8042"]
+    ports: ['4242:4242', '8042:8042']
     environment:
       ORTHANC__NAME: ${DDEV_SITENAME}
       ORTHANC__REGISTERED_USERS: |
@@ -12,10 +12,10 @@ services:
     labels:
       com.ddev.site-name: ${DDEV_SITENAME}
       com.ddev.approot: $DDEV_APPROOT
-    restart: 'no'
+    restart: always
     volumes:
-      - ".:/mnt/ddev_config"
-      - "orthanc-storage:/var/lib/orthanc/db:Z"
+      - '.:/mnt/ddev_config'
+      - 'orthanc-storage:/var/lib/orthanc/db:Z'
     networks: [default, ddev_default]
     healthcheck:
       disable: true
