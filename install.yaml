@@ -13,16 +13,18 @@ pre_install_actions:
     #ddev-nodisplay
     #ddev-description:Pre-upgrade for older versions of add-on
     for file in \
+      orthanc/config/orthanc.json \
+      orthanc/scripts/script.lua \
       docker-compose.orthanc.yaml \
       commands/host/orthanc; do
         if [ -f $file ]; then
-          if ! grep "#ddev-generated" $file; then
-            echo "remove old style file $file"
-            rm $file
-          fi
+          echo "remove old style file $file"
+          rm $file
         fi
       done
 
 project_files:
   - docker-compose.orthanc.yaml
   - commands/host/orthanc
+  - orthanc/config/orthanc.json
+  - orthanc/scripts/script.lua

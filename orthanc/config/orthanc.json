@@ -1,0 +1,15 @@
+// #ddev-generated
+{
+  "Name": "ORTHANC",
+  "StorageDirectory": "StorageORTHANC",
+  "DicomAet": "ORTHANC",
+  "DicomPort": 4242,
+  "HttpPort": 8042,
+  "LuaScripts": ["/etc/share/orthanc/scripts/script.lua"],
+  "Plugins": ["/usr/share/orthanc/plugins"],
+  "AuthenticationEnabled": true,
+  "RegisteredUsers": {
+    "orthanc": "orthanc"
+  },
+  "DicomModalities": {}
+}
