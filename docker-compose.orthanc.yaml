@@ -17,12 +17,8 @@ services:
     restart: always
     volumes:
       - '.:/mnt/ddev_config'
-      - 'orthanc-storage:/var/lib/orthanc/db:Z'
       - ${DDEV_APPROOT}/.ddev/orthanc/scripts:/etc/share/orthanc/scripts
       - ${DDEV_APPROOT}/.ddev/orthanc/config:/etc/orthanc
     networks: [default, ddev_default]
     healthcheck:
       disable: true
-
-volumes:
-  orthanc-storage:
