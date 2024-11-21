@@ -15,8 +15,23 @@ Orthanc can turn any computer running Windows, Linux or OS X into a DICOM store 
 
 ## Installation
 
-1. `ddev get madebydaniz/ddev-orthanc`
-2. `ddev restart`
+For DDEV v1.23.5 or above run
+
+```bash
+ddev add-on get madebydaniz/ddev-orthanc
+```
+
+For earlier versions of DDEV run
+
+```bash
+ddev get madebydaniz/ddev-orthanc
+```
+
+Then restart your project
+
+```bash
+ddev restart
+```
 
 ## Explanation
 
