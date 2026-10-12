@@ -1,38 +1,57 @@
 name: tests
+
 on:
   pull_request:
   push:
-    branches: [ main ]
-
+    branches: [main, develop]
   schedule:
-  - cron: '25 08 * * *'
-
+    - cron: '25 08 * * *'
   workflow_dispatch:
-    inputs:
-      debug_enabled:
-        type: boolean
-        description: Debug with tmate
-        required: false
-        default: false
 
-# This is required for "gautamkrishnar/keepalive-workflow"
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: orthanc-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tests:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Static and unit checks
+        run: |
+          python3 -m unittest discover -s tests/unit -v
+          python3 -m py_compile orthanc/tools/orthanc.py
+          python3 -c "import json,pathlib; json.loads('\n'.join(line for line in pathlib.Path('orthanc/config/orthanc.json').read_text().splitlines() if not line.lstrip().startswith('//')))"
+          bash -n commands/host/orthanc
+          shellcheck commands/host/orthanc
+  integration:
     strategy:
+      fail-fast: false
       matrix:
         ddev_version: [stable, HEAD]
-      fail-fast: false
-
-    runs-on: ubuntu-latest
-
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     steps:
-      - uses: ddev/github-action-add-on-test@v1
+      - name: Install DICOM test client
+        run: sudo apt-get update && sudo apt-get install -y dcmtk
+      - uses: ddev/github-action-add-on-test@d614651ba8fffdb956ab7864f191c32353330d68 # v2.6.2
         with:
           ddev_version: ${{ matrix.ddev_version }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          debug_enabled: ${{ github.event.inputs.debug_enabled }}
-          addon_repository: ${{ env.GITHUB_REPOSITORY }}
-          addon_ref: ${{ env.GITHUB_REF }}
+          addon_repository: ${{ github.repository }}
+          addon_ref: ${{ github.ref }}
+          test_command: bats tests/test.bats
+      - name: Preserve safe failure summary
+        if: failure()
+        run: |
+          mkdir -p diagnostics
+          ddev version > diagnostics/ddev-version.txt 2>&1 || true
+          docker ps --format '{{.Names}} {{.Status}}' > diagnostics/containers.txt
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: diagnostics-${{ matrix.runner }}-${{ matrix.ddev_version }}
+          path: diagnostics
