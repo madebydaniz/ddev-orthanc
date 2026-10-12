@@ -1,3 +1,10 @@
+# Local acceptance project and private developer data
+/test_project/
+/.tokensave/
+/backups/
+*.local
+__pycache__/
+
 # Created by https://www.toptal.com/developers/gitignore/api/windows,macos,phpstorm+all,visualstudiocode,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,macos,phpstorm+all,visualstudiocode,linux
 

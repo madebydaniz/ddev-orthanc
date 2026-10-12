@@ -1,30 +1,55 @@
-# Details about the install.yaml file are at https://ddev.readthedocs.io/en/latest/users/extend/additional-services/#sections-and-features-of-ddev-get-add-on-installyaml
-
 name: orthanc
+ddev_version_constraint: '>= v1.25.4'
 
 pre_install_actions:
   - |
     #ddev-nodisplay
-    #ddev-description:Check DDEV version
-    if ! ( ddev debug capabilities 2>/dev/null | grep multiple-dockerfiles >/dev/null 2>&1 ) ; then
-      echo "This add-on requires DDEV v1.19.3 or higher, please upgrade." && exit 2
+    #ddev-description:Check legacy storage before upgrading
+    if [ -f orthanc/config/orthanc.json ] || [ -f docker-compose.orthanc.yaml ]; then
+      maintained=true
+      acknowledged=false
+      known_layout=false
+      if grep -qx 'sqlite-volume-v1' orthanc/.managed-storage-v1 2>/dev/null; then
+        known_layout=true
+      fi
+      if grep -qx 'sqlite-volume-v1' orthanc/.migration-ack 2>/dev/null; then
+        acknowledged=true
+      fi
+      [ -f .env.orthanc ] || [ "$acknowledged" = true ] || [ "$known_layout" = true ] || maintained=false
+      [ -f orthanc/config/orthanc.json ] || maintained=false
+      if [ "$acknowledged" != true ] && [ -f docker-compose.orthanc.yaml ] && ! grep -Eq 'image:[[:space:]]*orthancteam/orthanc:' docker-compose.orthanc.yaml; then
+        maintained=false
+      fi
+      if [ ! -f docker-compose.orthanc.yaml ] && [ "$known_layout" != true ] && [ "$acknowledged" != true ]; then
+        maintained=false
+      fi
+      if [ -f orthanc/config/orthanc.json ]; then
+        config=$(awk '!/^[[:space:]]*\/\// { printf "%s ", $0 }' orthanc/config/orthanc.json)
+        for field in StorageDirectory IndexDirectory; do
+          count=$(printf '%s' "$config" | (grep -oE "\\\"$field\\\"" || true) | wc -l | tr -d '[:space:]')
+          if [ "$count" != 1 ] || ! printf '%s' "$config" | grep -Eq "\\\"$field\\\"[[:space:]]*:[[:space:]]*\\\"/var/lib/orthanc/db\\\""; then
+            maintained=false
+          fi
+        done
+      fi
+      if [ "$maintained" != true ]; then
+        echo 'Unrecognized or legacy Orthanc storage layout. Stop and back up the existing storage before upgrading.'
+        echo 'Migration must preserve the complete index and DICOM files. See README; existing files were not changed.'
+        exit 2
+      fi
     fi
+
+post_install_actions:
   - |
     #ddev-nodisplay
-    #ddev-description:Pre-upgrade for older versions of add-on
-    for file in \
-      orthanc/config/orthanc.json \
-      orthanc/scripts/script.lua \
-      docker-compose.orthanc.yaml \
-      commands/host/orthanc; do
-        if [ -f $file ]; then
-          echo "remove old style file $file"
-          rm $file
-        fi
-      done
+    #ddev-description:Record managed storage layout for safe reinstall
+    printf 'sqlite-volume-v1\n' > orthanc/.managed-storage-v1
 
 project_files:
   - docker-compose.orthanc.yaml
+  - .env.orthanc
   - commands/host/orthanc
   - orthanc/config/orthanc.json
   - orthanc/scripts/script.lua
+  - orthanc/tools/orthanc.py
+  - orthanc/.gitignore

@@ -1,0 +1,8 @@
+#ddev-generated
+backups/
+*.dcm
+*.sqlite*
+__pycache__/
+.operation-lock/
+.migration-ack
+.managed-storage-v1

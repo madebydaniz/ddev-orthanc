@@ -1,0 +1,6 @@
+/test_project export-ignore
+/.tokensave export-ignore
+/.github export-ignore
+/tests export-ignore
+/backups export-ignore
+*.local export-ignore

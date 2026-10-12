@@ -3,22 +3,29 @@ services:
   orthanc:
     container_name: ddev-${DDEV_SITENAME}-orthanc
     hostname: ${DDEV_SITENAME}-orthanc
-    image: osimis/orthanc:latest
+    image: orthancteam/orthanc:26.9.1
+    restart: "no"
     ports:
-      - 4242:4242
-      - 8042
+      - "127.0.0.1:${ORTHANC_DICOM_PORT:-4242}:4242"
+    expose:
+      - "8042"
     environment:
-      ORTHANC__NAME: ${DDEV_SITENAME}
-      VIRTUAL_HOST: $DDEV_HOSTNAME
-      HTTP_EXPOSE: 8042
-    labels:
-      com.ddev.site-name: ${DDEV_SITENAME}
-      com.ddev.approot: $DDEV_APPROOT
-    restart: always
+      ORTHANC__NAME: ${ORTHANC__NAME:-${DDEV_SITENAME}}
+      VIRTUAL_HOST: ${DDEV_HOSTNAME}
+      HTTP_EXPOSE: "8042:8042"
+      HTTPS_EXPOSE: "8043:8042"
     volumes:
-      - '.:/mnt/ddev_config'
-      - ${DDEV_APPROOT}/.ddev/orthanc/scripts:/etc/share/orthanc/scripts
-      - ${DDEV_APPROOT}/.ddev/orthanc/config:/etc/orthanc
-    networks: [default, ddev_default]
+      - ".:/mnt/ddev_config"
+      - "./orthanc/config:/etc/orthanc:ro"
+      - "./orthanc/scripts:/etc/share/orthanc/scripts:ro"
+      - "orthanc-data:/var/lib/orthanc/db"
     healthcheck:
-      disable: true
+      test: ["CMD", "python3", "/mnt/ddev_config/orthanc/tools/orthanc.py", "ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  orthanc-data:
+    name: "ddev-${DDEV_SITENAME}-orthanc-data"

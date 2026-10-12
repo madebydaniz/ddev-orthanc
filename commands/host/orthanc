@@ -1,50 +1,92 @@
-#!/bin/bash
+#!/usr/bin/env bash
+## #ddev-generated
+## Description: Launch, diagnose, seed, back up or restore Orthanc
+## Usage: orthanc [launch|url|doctor|seed|backup FILE|restore FILE --yes|help]
+## Example: "ddev orthanc" or "ddev orthanc seed"
 
-## #ddev-generated: If you want to edit and own this file, remove this line.
-## Description: Launch a browser with the current orthanc service
-## Usage: launch [path] [-o|--orthanc]
-## Example: "ddev launch orthanc" or "ddev launch -o"
+set -euo pipefail
+command=${1:-launch}
+[[ $# -eq 0 ]] || shift
+helper=/mnt/ddev_config/orthanc/tools/orthanc.py
 
-DDEV_ORTHANC_PORT=8042
-FULLURL="http://${DDEV_SITENAME}.${DDEV_TLD}"
+usage() {
+  echo 'Usage: ddev orthanc [launch|url|doctor|seed|backup FILE|restore FILE --yes|help]'
+}
 
-while :; do
-     case ${1:-} in
-         -o|--orthanc)
-            if [[ ! -z "${GITPOD_INSTANCE_ID}" ]] || [[ "${CODESPACES}" == "true" ]]; then
-                FULLURL="${FULLURL/-${DDEV_HOST_WEBSERVER_PORT}/-${DDEV_ORTHANC_PORT}}"
-            else
-                FULLURL="${FULLURL%:[0-9]*}:${DDEV_ORTHANC_PORT}"
-            fi
-             ;;
-
-         --)              # End of all options.
-             shift
-             break
-             ;;
-         -?*)
-             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
-             ;;
-         *)               # Default case: No more options, so break out of the loop.
-             break
-     esac
-
-     shift
- done
-
-
-case $OSTYPE in
-  linux-gnu)
-    if [[ ! -z "${GITPOD_INSTANCE_ID}" ]]; then
-        gp preview ${FULLURL}
+case "$command" in
+  help|-h|--help) [[ $# -eq 0 ]] || { usage >&2; exit 2; }; usage ;;
+  launch|-o|--orthanc|url)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    if [[ "$command" == url ]]; then
+      ddev launch --print-url :8043
     else
-        xdg-open ${FULLURL}
+      ddev launch :8043
     fi
     ;;
-  "darwin"*)
-    open ${FULLURL}
+  doctor|seed)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    ddev exec -s orthanc python3 "$helper" "$command"
     ;;
-  "win*"* | "msys"*)
-    start ${FULLURL}
+  backup|restore)
+    if [[ "$command" == backup ]]; then
+      [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    else
+      [[ $# -eq 2 && "$2" == --yes ]] || { usage >&2; exit 2; }
+    fi
+    archive=$1
+    [[ "$archive" == /* ]] || archive="$PWD/$archive"
+    directory=$(dirname "$archive")
+    [[ -d "$directory" ]] || { echo 'Archive directory must already exist.' >&2; exit 2; }
+    directory=$(cd "$directory" && pwd -P)
+    filename=$(basename "$archive")
+    container="ddev-${DDEV_SITENAME}-orthanc"
+    lock="${DDEV_APPROOT:-$PWD}/.ddev/orthanc/.operation-lock"
+    if ! (umask 077; mkdir "$lock") 2>/dev/null; then
+      echo 'Another Orthanc backup/restore is active, or a stale operation lock requires inspection.' >&2
+      exit 2
+    fi
+    stopped=false
+    running=false
+    # shellcheck disable=SC2329
+    cleanup() {
+      local original_status=$?
+      trap - EXIT
+      if [[ "$command" == backup && "$running" == true && "$stopped" == true ]]; then
+        if ! docker start "$container" >/dev/null; then
+          echo 'Could not resume Orthanc after backup; run ddev restart.' >&2
+          original_status=1
+        fi
+      fi
+      rmdir "$lock" 2>/dev/null || true
+      exit "$original_status"
+    }
+    trap cleanup EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    image=$(docker inspect --format '{{.Config.Image}}' "$container")
+    running=$(docker inspect --format '{{.State.Running}}' "$container")
+    if [[ "$command" == backup && -e "$directory/$filename" ]]; then
+      echo 'Backup archive already exists.' >&2; exit 2
+    fi
+    if [[ "$command" == restore && ! -f "$directory/$filename" ]]; then
+      echo 'Restore archive does not exist.' >&2; exit 2
+    fi
+    run_helper() {
+      docker cp "$container:/tmp/orthanc.json" - | docker run -i --rm --network none --volumes-from "$container" \
+        --mount "type=bind,source=$directory,target=/backup" \
+        --entrypoint python3 "$image" "$helper" "$1" "/backup/$filename" --image "$image" --effective-stdin
+    }
+    run_helper "validate-$command"
+    if [[ "$running" == true ]]; then
+      stopped=true
+      docker stop "$container" >/dev/null
+    fi
+    result=0
+    run_helper "$command" || result=$?
+    if [[ "$result" != 0 && "$command" == restore ]]; then
+      echo 'Restore failed. Orthanc remains stopped; inspect the archive and target before restarting.' >&2
+    fi
+    exit "$result"
     ;;
+  *) usage >&2; exit 2 ;;
 esac
