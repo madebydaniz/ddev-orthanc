@@ -1,15 +1,16 @@
 // #ddev-generated
 {
   "Name": "ORTHANC",
-  "StorageDirectory": "StorageORTHANC",
+  "StorageDirectory": "/var/lib/orthanc/db",
+  "IndexDirectory": "/var/lib/orthanc/db",
   "DicomAet": "ORTHANC",
   "DicomPort": 4242,
   "HttpPort": 8042,
   "LuaScripts": ["/etc/share/orthanc/scripts/script.lua"],
   "Plugins": ["/usr/share/orthanc/plugins"],
   "AuthenticationEnabled": true,
-  "RegisteredUsers": {
-    "orthanc": "orthanc"
-  },
+  "RemoteAccessAllowed": true,
+  "DicomAlwaysAllowEcho": true,
+  "DicomAlwaysAllowStore": true,
   "DicomModalities": {}
 }
