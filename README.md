@@ -1,5 +1,8 @@
 # DDEV Orthanc
 
+[![Release](https://img.shields.io/github/v/release/madebydaniz/ddev-orthanc)](https://github.com/madebydaniz/ddev-orthanc/releases/latest)
+[![Tests](https://github.com/madebydaniz/ddev-orthanc/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/madebydaniz/ddev-orthanc/actions/workflows/tests.yml?query=branch%3Amain)
+
 A lightweight local DICOM server for DDEV: SQLite, persistent storage and Orthanc Explorer 2. Requires DDEV **v1.25.4+** and Docker. The default image is `orthancteam/orthanc:26.9.1` (Orthanc core 1.13.0); projects can select compatible versions or derived images.
 
 ## Install
@@ -10,7 +13,7 @@ ddev restart
 ddev orthanc
 ```
 
-These changes are currently in source; published release 0.0.4 still uses the older configuration. To test this checkout, install a source snapshot as described below.
+Version 0.1.0 introduces the maintained storage layout and command suite. Upgrading from 0.0.4 or an older installation requires the explicit legacy storage migration described below.
 
 ## Access and configuration
 
@@ -170,6 +173,6 @@ ddev add-on get "$snapshot"
 ddev restart
 ```
 
-CI uses the v2 add-on action with stable/HEAD DDEV on amd64/arm64, read-only repository permissions, static/unit checks and source integration. A published-release event also runs the release test against that exact tag. Normal branch runs skip it before publication. On failure CI retains version/container diagnostics. Workflow configuration is not proof of a successful remote run: historical issues #1 and #4 remain unresolved until published changes pass active CI.
+CI uses the v2 add-on action with stable/HEAD DDEV on amd64/arm64, read-only repository permissions, static/unit checks and source integration. A published-release event also runs the release test against that exact tag. Normal branch runs skip the opt-in release test. On failure CI retains version/container diagnostics. Use the test badge and release workflow runs to inspect current results.
 
 Maintained by [@madebydaniz](https://github.com/madebydaniz). DDEV configuration references: [add-on lifecycle](https://docs.ddev.com/en/stable/users/extend/creating-add-ons/) and [custom services](https://docs.ddev.com/en/stable/users/extend/custom-docker-services/).
