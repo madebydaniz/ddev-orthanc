@@ -101,8 +101,6 @@ api() {
   [ "$(docker inspect -f '{{.State.Running}}' "ddev-${PROJNAME}-orthanc")" = true ]
 
   # A new stopped target with a fresh volume has never initialized a database.
-  docker cp "ddev-${PROJNAME}-orthanc:/tmp/orthanc.json" "$TESTDIR/effective.json"
-  chmod 600 "$TESTDIR/effective.json"
   docker create --name "ddev-${RESTORE_NAME}-orthanc" \
     --mount "type=volume,source=$RESTORE_VOLUME,target=/var/lib/orthanc/db" \
     --mount "type=bind,source=$TESTDIR/.ddev,target=/mnt/ddev_config" \
@@ -110,7 +108,8 @@ api() {
     --mount "type=bind,source=$TESTDIR/.ddev/orthanc/scripts,target=/etc/share/orthanc/scripts,readonly" \
     --env-file "$TESTDIR/.ddev/.env.orthanc" \
     --env-file "$TESTDIR/.ddev/.env.orthanc.local" orthancteam/orthanc:26.9.1 >/dev/null
-  docker cp "$TESTDIR/effective.json" "ddev-${RESTORE_NAME}-orthanc:/tmp/orthanc.json"
+  # Preserve container ownership so Linux sticky-directory protections permit startup to rewrite it.
+  docker cp "ddev-${PROJNAME}-orthanc:/tmp/orthanc.json" - | docker cp -a - "ddev-${RESTORE_NAME}-orthanc:/tmp/"
   DDEV_SITENAME="$RESTORE_NAME" bash "$DIR/commands/host/orthanc" restore "$TESTDIR/backup with spaces.tar.gz" --yes
   docker start "ddev-${RESTORE_NAME}-orthanc" >/dev/null
   for _attempt in $(seq 1 30); do
