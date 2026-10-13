@@ -47,7 +47,8 @@ case "$command" in
     fi
     stopped=false
     running=false
-    # shellcheck disable=SC2329
+    # Invoked by EXIT; older ShellCheck versions cannot trace this trap.
+    # shellcheck disable=SC2317,SC2329
     cleanup() {
       local original_status=$?
       trap - EXIT
