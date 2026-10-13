@@ -19,9 +19,9 @@ concurrency:
 
 jobs:
   static:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Static and unit checks
         run: |
           python3 -m unittest discover -s tests/unit -v
@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         ddev_version: [stable, HEAD]
-        runner: [ubuntu-latest, ubuntu-24.04-arm]
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Install DICOM test client
@@ -55,7 +55,7 @@ jobs:
           mkdir -p diagnostics
           ddev version > diagnostics/ddev-version.txt 2>&1 || true
           docker ps --format '{{.Names}} {{.Status}}' > diagnostics/containers.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: diagnostics-${{ matrix.runner }}-${{ matrix.ddev_version }}
