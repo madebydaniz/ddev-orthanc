@@ -28,6 +28,7 @@ teardown() {
   if [[ "${BATS_TEST_COMPLETED:-}" != 1 ]]; then
     # Tail only; never dump effective config, environment or API bodies.
     ddev logs -s orthanc --tail=40 >&3
+    docker logs --tail=40 "ddev-${RESTORE_NAME}-orthanc" >&3 2>&3 || true
   fi
   docker rm -f "ddev-${RESTORE_NAME}-orthanc" >/dev/null 2>&1
   docker volume rm "$RESTORE_VOLUME" >/dev/null 2>&1
@@ -114,6 +115,7 @@ api() {
   docker start "ddev-${RESTORE_NAME}-orthanc" >/dev/null
   for _attempt in $(seq 1 30); do
     if docker exec "ddev-${RESTORE_NAME}-orthanc" python3 /mnt/ddev_config/orthanc/tools/orthanc.py ready; then break; fi
+    [ "$(docker inspect -f '{{.State.Running}}' "ddev-${RESTORE_NAME}-orthanc")" = true ] || return 1
     sleep 1
   done
   docker exec "ddev-${RESTORE_NAME}-orthanc" python3 -c "import runpy; m=runpy.run_path('/mnt/ddev_config/orthanc/tools/orthanc.py'); assert m['request']('/instances/$instance')['ID']=='$instance'"
