@@ -3,7 +3,7 @@ services:
   orthanc:
     container_name: ddev-${DDEV_SITENAME}-orthanc
     hostname: ${DDEV_SITENAME}-orthanc
-    image: orthancteam/orthanc:26.9.1
+    image: ${ORTHANC_IMAGE:-orthancteam/orthanc:26.9.1}
     restart: "no"
     ports:
       - "127.0.0.1:${ORTHANC_DICOM_PORT:-4242}:4242"

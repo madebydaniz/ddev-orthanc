@@ -17,7 +17,7 @@ pre_install_actions:
       fi
       [ -f .env.orthanc ] || [ "$acknowledged" = true ] || [ "$known_layout" = true ] || maintained=false
       [ -f orthanc/config/orthanc.json ] || maintained=false
-      if [ "$acknowledged" != true ] && [ -f docker-compose.orthanc.yaml ] && ! grep -Eq 'image:[[:space:]]*orthancteam/orthanc:' docker-compose.orthanc.yaml; then
+      if [ "$acknowledged" != true ] && [ -f docker-compose.orthanc.yaml ] && ! grep -Eq '^[[:space:]]*image:[[:space:]]*"?(\$\{ORTHANC_IMAGE:-orthancteam/orthanc:26\.9\.1\}|orthancteam/orthanc:[[:alnum:]_.-]+)"?[[:space:]]*$' docker-compose.orthanc.yaml; then
         maintained=false
       fi
       if [ ! -f docker-compose.orthanc.yaml ] && [ "$known_layout" != true ] && [ "$acknowledged" != true ]; then

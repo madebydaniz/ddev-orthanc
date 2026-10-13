@@ -8,7 +8,6 @@ import json
 import os
 import shutil
 import struct
-import subprocess
 import sys
 import tarfile
 import urllib.error
@@ -135,14 +134,21 @@ def doctor():
     plugins = request("/plugins")
     print(f"Orthanc {system['Version']}: authenticated API and database ready")
     print("Plugins: " + ", ".join(plugins))
-    echo = shutil.which("echoscu")
-    if echo:
-        subprocess.run(
-            [echo, "-aec", system["DicomAet"], "127.0.0.1", "4242"], check=True
-        )
-        print("DICOM C-ECHO: passed")
-    else:
-        print("DICOM C-ECHO: not checked (echoscu is not installed in the image)")
+    config = effective_config()
+    if config.get("DicomServerEnabled", True) is False:
+        print("DICOM C-ECHO: disabled (DicomServerEnabled=false)")
+        return
+    request(
+        "/tools/dicom-echo",
+        {
+            "AET": system["DicomAet"],
+            "Host": "127.0.0.1",
+            "Port": config.get("DicomPort", 4242),
+            "Timeout": 2,
+            "CheckFind": False,
+        },
+    )
+    print("DICOM C-ECHO: passed")
 
 
 def add_bytes(archive, name, payload):
@@ -182,6 +188,7 @@ def validate_backend(effective, image):
         "Gdcm",
         "OHIF",
         "OrthancExplorer2",
+        "StoneWebViewer",
         "PostgreSQL",
         "MySQL",
         "ODBC",
@@ -407,7 +414,6 @@ def main():
         TypeError,
         OSError,
         tarfile.TarError,
-        subprocess.CalledProcessError,
     ) as error:
         # Never echo API bodies or configuration that could contain credentials.
         print(f"Orthanc {args.command} failed: {error}", file=__import__("sys").stderr)

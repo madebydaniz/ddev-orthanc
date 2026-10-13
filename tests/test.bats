@@ -46,6 +46,7 @@ api() {
   run ddev orthanc doctor
   [ "$status" -eq 0 ]
   [[ "$output" == *"authenticated API"* ]]
+  [[ "$output" == *"DICOM C-ECHO: passed"* ]]
   url=$(ddev orthanc url)
   [[ "$url" == https://*:8043 ]]
   run curl -s -o /dev/null -w '%{http_code}' "$url/system"
@@ -123,11 +124,13 @@ api() {
   ddev restart >/dev/null
   run api "/instances/$instance"
   [ "$status" -eq 0 ]
-  printf '\nDICOM_WEB_PLUGIN_ENABLED=true\nOHIF_PLUGIN_ENABLED=true\n' >> .ddev/.env.orthanc.local
+  printf '\nDICOM_WEB_PLUGIN_ENABLED=true\nOHIF_PLUGIN_ENABLED=true\nSTONE_WEB_VIEWER_PLUGIN_ENABLED=true\n' >> .ddev/.env.orthanc.local
   ddev restart >/dev/null
   plugins=$(api /plugins)
   [[ "$plugins" == *"dicom-web"* ]]
   [[ "$plugins" == *"ohif"* ]]
+  [[ "$plugins" == *"stone-webviewer"* ]]
+  ddev exec -s orthanc python3 -c "import runpy; m=runpy.run_path('/mnt/ddev_config/orthanc/tools/orthanc.py'); assert b'<html' in m['request']('/stone-webviewer/index.html', raw=True).lower()"
   studies=$(api /dicom-web/studies)
   printf '%s' "$studies" | jq -e '.[] | select(.["0020000D"].Value[0] == "1.2.826.0.1.3680043.10.543.20261013.1.1")' >/dev/null
   ddev exec -s orthanc python3 -c "import runpy; m=runpy.run_path('/mnt/ddev_config/orthanc/tools/orthanc.py'); uid=m['SEED_UID']; payload=m['request']('/dicom-web/studies/'+uid+'.1/series/'+uid+'.2/instances/'+uid, raw=True); assert b'DICM' in payload; assert bytes((0,85,170,255)) in payload"
@@ -135,7 +138,11 @@ api() {
 
 @test "release lifecycle is opt-in until a compatible release is published" {
   [[ "${ORTHANC_TEST_RELEASE:-}" == 1 ]] || skip 'Set ORTHANC_TEST_RELEASE=1 after publishing the maintained release.'
-  ddev add-on get madebydaniz/ddev-orthanc
+  if [[ -n "${ORTHANC_TEST_RELEASE_VERSION:-}" ]]; then
+    ddev add-on get madebydaniz/ddev-orthanc --version="$ORTHANC_TEST_RELEASE_VERSION"
+  else
+    ddev add-on get madebydaniz/ddev-orthanc
+  fi
   ddev start >/dev/null
   ddev orthanc doctor
   ddev orthanc seed

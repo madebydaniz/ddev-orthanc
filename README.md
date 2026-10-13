@@ -1,6 +1,6 @@
 # DDEV Orthanc
 
-A lightweight local DICOM server for DDEV: SQLite, persistent storage and Orthanc Explorer 2. Requires DDEV **v1.25.4+** and Docker. The image is pinned to `orthancteam/orthanc:26.9.1` (Orthanc 1.13.0).
+A lightweight local DICOM server for DDEV: SQLite, persistent storage and Orthanc Explorer 2. Requires DDEV **v1.25.4+** and Docker. The default image is `orthancteam/orthanc:26.9.1` (Orthanc core 1.13.0); projects can select compatible versions or derived images.
 
 ## Install
 
@@ -37,19 +37,55 @@ Run `ddev restart` after changes. Every concurrently running project needs a dis
 
 Orthanc Explorer 2 is enabled by default, at `/ui/app/`. DICOMweb is optional, at `/dicom-web/`. OHIF is optional, at `/ohif/`, and requires DICOMweb enabled. JSON lives at `.ddev/orthanc/config/orthanc.json`; Lua hooks live at `.ddev/orthanc/scripts/script.lua`. Image environment overrides take precedence. Keep storage and index at `/var/lib/orthanc/db` when using the command suite.
 
+## Selecting versions and plugins
+
+Set `ORTHANC_IMAGE` in `.ddev/.env.orthanc.local`, then run `ddev restart`:
+
+```dotenv
+ORTHANC_IMAGE=orthancteam/orthanc:26.4.2
+```
+
+OrthancTeam image tags identify bundled releases; they are not Orthanc core version numbers. For example, image26.4.2 bundles core1.12.11, while image26.9.1 bundles core1.13.0. Inspect the running core with `ddev orthanc doctor` and consult the [image release notes](https://github.com/orthanc-server/orthanc-builder/blob/master/release-notes-docker-images.md) for bundled plugin versions. A verified digest reference (`orthancteam/orthanc@sha256:<digest>`) or a derived image reference can also be selected. Use a fresh project/volume when trying an older core; do not downgrade a retained database in place.
+
+A custom image must derive from a compatible OrthancTeam image and retain Python3, the generated `/tmp/orthanc.json`, HTTP8042/DICOM4242, environment configuration and the mounted SQLite paths. This is the runtime compatibility contract; arbitrary Orthanc images are not interchangeable.
+
+Enable bundled plugins using their image flags in the same local env file. For example:
+
+```dotenv
+DICOM_WEB_PLUGIN_ENABLED=true
+STONE_WEB_VIEWER_PLUGIN_ENABLED=true
+```
+
+Stone Web Viewer uses DICOMweb and is served at `/stone-webviewer/index.html`. Available flags and plugin versions depend on the selected image; see the [OrthancTeam image documentation](https://orthanc.uclouvain.be/book/users/docker-orthancteam.html).
+
+For a custom Linux plugin, put the binary in `.ddev/orthanc/custom-plugins/` and add `.ddev/docker-compose.orthanc-plugins.yaml`:
+
+```yaml
+services:
+  orthanc:
+    volumes:
+      - "./orthanc/custom-plugins:/opt/orthanc/custom-plugins:ro"
+    environment:
+      ORTHANC__PLUGINS: '["/usr/share/orthanc/plugins","/opt/orthanc/custom-plugins"]'
+```
+
+The separate mount preserves bundled plugins. Supply Linux `.so` files built for the container architecture, compatible Orthanc plugin ABI and core version. macOS binaries do not work in the Linux container. Required shared libraries must exist in the selected image; build a derived image to install dependencies when needed. Use [DDEV Compose overrides](https://docs.ddev.com/en/stable/users/extend/custom-compose-files/) for those mounts, then check actual plugin loading with `doctor`. Architecture support belongs to the selected image and binary; this add-on does not establish compatibility for every custom plugin.
+
+Runtime image/plugin selection does not expand backup support. Built-in backup/restore accepts only the audited `orthancteam/orthanc:26.9.1` reference, standard SQLite layout and verified bundled plugin configuration. Alternate tags, digest references, derived images, custom plugin paths and unverified storage behavior are rejected before stopping the service. For those deployments, use a backup procedure audited for the exact image/plugins; there is no bypass flag.
+
 ## Commands
 
 | Command | Behavior |
 | --- | --- |
 | `ddev orthanc` / `launch` | Launch the HTTPS browser endpoint |
 | `ddev orthanc url` | Print the HTTPS URL |
-| `ddev orthanc doctor` | Check authenticated API, database readiness and plugins; C-ECHO when echoscu exists in the container |
+| `ddev orthanc doctor` | Check authenticated API, database readiness, plugins and real self C-ECHO through Orthanc's API |
 | `ddev orthanc seed` | Upload one tiny synthetic 2×2 DICOM image with fixed UIDs |
 | `ddev orthanc backup "/path/archive.tar.gz"` | Validate backend, stop only Orthanc, archive storage/config, resume it if previously running |
 | `ddev orthanc restore "/path/archive.tar.gz" --yes` | Validate archive and empty target, restore, leave Orthanc stopped |
 | `ddev orthanc help` | Show usage |
 
-The original `-o` and `--orthanc` flags still launch the browser. Unknown arguments fail. Repeated seed calls return the same ID and `AlreadyStored`; this fixture contains synthetic data only. The pinned image has no echoscu, so doctor explicitly reports C-ECHO untested; use a host DCMTK client for that check:
+The original `-o` and `--orthanc` flags still launch the browser. Unknown arguments fail. Repeated seed calls return the same ID and `AlreadyStored`; this fixture contains synthetic data only. Doctor sends a real C-ECHO to the effective local AET/port through `POST /tools/dicom-echo`, without registering a modality or requiring echoscu. An enabled server's echo failure exits nonzero; an intentionally disabled DICOM server is reported explicitly. Readiness stays passive. For independent host DICOM checks, use DCMTK:
 
 ```bash
 echoscu -aec ORTHANC 127.0.0.1 4242
@@ -122,7 +158,7 @@ shellcheck commands/host/orthanc
 bats tests/test.bats
 ```
 
-Integration requires DDEV, Docker, jq, curl, Bats and host DCMTK (`echoscu`/`storescu`). It uses unique temporary projects and port 14242 by default; override with `ORTHANC_TEST_DICOM_PORT`. It installs current source from a tracked-path snapshot, checks authentication, deterministic seed, REST retrieval, C-ECHO/C-STORE, recreated-container persistence, owned-file preservation, removal/reinstallation, plugin toggles and a stopped-volume backup/restore round trip. Release testing is skipped unless `ORTHANC_TEST_RELEASE=1`; enable it only after a compatible release is published.
+Integration requires DDEV, Docker, jq, curl, Bats and host DCMTK (`echoscu`/`storescu`). It uses unique temporary projects and port14242 by default; override with `ORTHANC_TEST_DICOM_PORT`. It installs current source from a tracked-path snapshot, checks authentication, deterministic seed, REST retrieval, doctor self-echo and independent C-ECHO/C-STORE, recreated-container persistence, owned-file preservation, removal/reinstallation, plugin toggles including Stone, QIDO/WADO and a stopped-volume backup/restore round trip. Release testing is skipped unless `ORTHANC_TEST_RELEASE=1`; set `ORTHANC_TEST_RELEASE_VERSION` to test a specific published tag, or omit it for latest.
 
 Persistent manual acceptance uses repository-root `test_project/`, excluded from Git and release archives. To make a source snapshot without recursively including it:
 
@@ -134,6 +170,6 @@ ddev add-on get "$snapshot"
 ddev restart
 ```
 
-CI uses the v2 add-on action with stable/HEAD DDEV on amd64/arm64, read-only repository permissions, static/unit checks and source integration. On failure it retains version/container diagnostics. Workflow configuration is not proof of a successful remote run: historical issues #1 and #4 remain unresolved until published changes pass active CI.
+CI uses the v2 add-on action with stable/HEAD DDEV on amd64/arm64, read-only repository permissions, static/unit checks and source integration. A published-release event also runs the release test against that exact tag. Normal branch runs skip it before publication. On failure CI retains version/container diagnostics. Workflow configuration is not proof of a successful remote run: historical issues #1 and #4 remain unresolved until published changes pass active CI.
 
 Maintained by [@madebydaniz](https://github.com/madebydaniz). DDEV configuration references: [add-on lifecycle](https://docs.ddev.com/en/stable/users/extend/creating-add-ons/) and [custom services](https://docs.ddev.com/en/stable/users/extend/custom-docker-services/).

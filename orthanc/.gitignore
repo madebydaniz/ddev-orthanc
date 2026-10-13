@@ -6,3 +6,4 @@ __pycache__/
 .operation-lock/
 .migration-ack
 .managed-storage-v1
+custom-plugins/

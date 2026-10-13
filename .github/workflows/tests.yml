@@ -7,6 +7,8 @@ on:
   schedule:
     - cron: '25 08 * * *'
   workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -28,6 +30,9 @@ jobs:
           bash -n commands/host/orthanc
           shellcheck commands/host/orthanc
   integration:
+    env:
+      ORTHANC_TEST_RELEASE: ${{ github.event_name == 'release' && '1' || '0' }}
+      ORTHANC_TEST_RELEASE_VERSION: ${{ github.event.release.tag_name || '' }}
     strategy:
       fail-fast: false
       matrix:

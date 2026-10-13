@@ -71,6 +71,29 @@ class InstallerTest(unittest.TestCase):
             )
             self.assertEqual(self.run_install(root).returncode, 2)
 
+    def test_image_interpolation_recognizes_only_maintained_template(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            config = root / "orthanc/config/orthanc.json"
+            config.parent.mkdir(parents=True)
+            config.write_text((ROOT / "orthanc/config/orthanc.json").read_text())
+            (root / ".env.orthanc").write_text((ROOT / ".env.orthanc").read_text())
+            local = root / ".env.orthanc.local"
+            local.write_text("ORTHANC_IMAGE=orthancteam/orthanc:26.4.2\n")
+            compose = root / "docker-compose.orthanc.yaml"
+            compose.write_text((ROOT / "docker-compose.orthanc.yaml").read_text())
+            self.assertEqual(self.run_install(root).returncode, 0)
+            self.assertIn("26.4.2", local.read_text())
+            for image in (
+                "osimis/orthanc:latest",
+                "${LEGACY_IMAGE:-osimis/orthanc:latest}",
+                "${ORTHANC_IMAGE}",
+                "${ORTHANC_IMAGE:-orthancteam/orthanc:26.9.1}-legacy",
+                "unverified/custom:latest",
+            ):
+                compose.write_text("image: " + image + "\n")
+                self.assertEqual(self.run_install(root).returncode, 2, image)
+
 
 class StoragePreflightTest(unittest.TestCase):
     def test_cloud_hybrid_encryption_and_unknown_plugins_rejected_before_archive(self):
@@ -126,6 +149,7 @@ class StoragePreflightTest(unittest.TestCase):
             "DicomWeb": {"Enable": True},
             "Gdcm": {"Enable": True},
             "OrthancExplorer2": {"Enable": True},
+            "StoneWebViewer": {"Enable": True},
         }
         tools.validate_backend(effective, tools.IMAGE)
 

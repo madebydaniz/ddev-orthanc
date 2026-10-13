@@ -7,6 +7,7 @@ import tarfile
 import tempfile
 import unittest
 import urllib.error
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,6 +20,87 @@ spec.loader.exec_module(tools)
 
 
 class ToolsTest(unittest.TestCase):
+    def test_doctor_self_echo_uses_effective_port_and_aet(self):
+        def response(path, data=None):
+            if path == "/system":
+                return {"Version": "synthetic", "DicomAet": "CUSTOM"}
+            if path == "/plugins":
+                return ["orthanc-explorer-2"]
+            return {}
+
+        output = io.StringIO()
+        with (
+            patch.object(tools, "request", side_effect=response) as request,
+            patch.object(tools, "effective_config", return_value={"DicomPort": 4424}),
+            redirect_stdout(output),
+        ):
+            tools.doctor()
+        self.assertEqual(
+            request.call_args_list[-1].args,
+            (
+                "/tools/dicom-echo",
+                {
+                    "AET": "CUSTOM",
+                    "Host": "127.0.0.1",
+                    "Port": 4424,
+                    "Timeout": 2,
+                    "CheckFind": False,
+                },
+            ),
+        )
+        self.assertIn("DICOM C-ECHO: passed", output.getvalue())
+        self.assertFalse(
+            any("/modalities" in call.args[0] for call in request.call_args_list)
+        )
+
+    def test_doctor_reports_disabled_server_without_echo(self):
+        output = io.StringIO()
+        with (
+            patch.object(
+                tools,
+                "request",
+                side_effect=[{"Version": "synthetic", "DicomAet": "CUSTOM"}, {}, []],
+            ) as request,
+            patch.object(
+                tools, "effective_config", return_value={"DicomServerEnabled": False}
+            ),
+            redirect_stdout(output),
+        ):
+            tools.doctor()
+        self.assertEqual(request.call_count, 3)
+        self.assertIn("disabled (DicomServerEnabled=false)", output.getvalue())
+
+    def test_doctor_echo_failure_exits_nonzero_and_ready_remains_passive(self):
+        output, error = io.StringIO(), io.StringIO()
+        with (
+            patch.object(tools.sys, "argv", ["orthanc.py", "doctor"]),
+            patch.object(tools, "effective_config", return_value={}),
+            patch.object(
+                tools,
+                "request",
+                side_effect=[
+                    {"Version": "synthetic", "DicomAet": "ORTHANC"},
+                    {},
+                    [],
+                    ValueError("Orthanc API /tools/dicom-echo: HTTP 502"),
+                ],
+            ),
+            redirect_stdout(output),
+            redirect_stderr(error),
+        ):
+            self.assertEqual(tools.main(), 1)
+        self.assertNotIn("C-ECHO: passed", output.getvalue())
+        self.assertIn("HTTP 502", error.getvalue())
+        with (
+            patch.object(tools.sys, "argv", ["orthanc.py", "ready"]),
+            patch.object(tools, "request", return_value={}) as request,
+        ):
+            self.assertEqual(tools.main(), 0)
+        self.assertEqual(
+            [call.args[0] for call in request.call_args_list],
+            ["/system", "/changes?last"],
+        )
+
     def test_seed_is_deterministic_valid_dicom(self):
         payload = tools.seed_dicom()
         self.assertEqual(payload, tools.seed_dicom())
